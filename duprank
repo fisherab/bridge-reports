@@ -8,15 +8,21 @@ import sys
 from pathlib import Path
 from datetime import date, datetime
 
+# Parse the arguments
 args = (sys.argv[1:])
 if len(args) != 2:
     sys.exit("Must have two arguments .. the event file and the event title")
 resultsFile, title = args
 
+# Fill the results dictionary with boards from the csv file. It is indexed by boardnum and contains a list of boards
+# Fill the resultsByPair dictionary indexed by pair number with a dictionary of boards indexed by boardnumber
+# Keynames is an array with the keys found in the csv file header
+# Pairs is a dictionary indexed by pair number and holding the pair names and ns is a set of NS pair numbers
 with open(resultsFile) as csv_file:
     csv_reader = csv.reader(csv_file, delimiter=',')
-    keynames = []
+    keynames = [] 
     results = {}
+    resultsByPair = {}
     pairs = {}
     ns = set()
     wantedKeys = ['board', 'score', 'ns_pair', 'ew_pair', 'north_username', 'south_username', 'east_username', 'west_username']
@@ -33,11 +39,22 @@ with open(resultsFile) as csv_file:
             board['score'] = int(board['score'])
             if boardNum not in results: results[boardNum] = []
             results[boardNum].append(board)
-            pairs[board['ns_pair']] = board['north_username'],board['south_username']
-            pairs[board['ew_pair']] = board['east_username'],board['west_username']
-            ns.add(board['ns_pair'])
+            nspair = board['ns_pair']
+            ewpair = board['ew_pair']
+            pairs[nspair] = board['north_username'],board['south_username']
+            pairs[ewpair] = board['east_username'],board['west_username']
+            ns.add(nspair)
             for dirn in ['north', 'south', 'east', 'west']: del board[dirn + '_username']
+            if nspair not in resultsByPair:
+                resultsByPair[nspair] = {boardNum:board}
+            else:
+                resultsByPair[nspair][boardNum] = board   
+            if ewpair not in resultsByPair:
+                resultsByPair[ewpair] = {boardNum:board}
+            else:
+                resultsByPair[ewpair][boardNum] = board   
 
+# For each board number sort the boards by score and calculate the points and percentages
 for boardNum in results:
     played = len(results[boardNum])
     results[boardNum].sort(key=lambda board: board['score'],reverse=True)
@@ -63,6 +80,7 @@ for key in results.keys():
         board["ns_%"] = round(board['ns_points'] * 50 / (len(resultsForBoard)-1),2)
         board["ew_%"] = round(board['ew_points'] * 50 / (len(resultsForBoard)-1),2)
 
+# Fill the rankings dictionary indexed by pair number and compute the total points for each pair
 rankings = {}
 for i in range(len(pairs)):
     rankings[str(i+1)] = {'points':0} 
@@ -73,6 +91,7 @@ for key in results.keys():
         rankings[board['ns_pair']]['points'] +=  board['ns_points']
         rankings[board['ew_pair']]['points'] +=  board['ew_points']
 
+# Compute the ranking table which is a list of rankings and include percentages and other quantities
 rankingTable = []
 tops = len(results) * (2* played -2)
 for key in rankings.keys():
@@ -83,17 +102,21 @@ for key in rankings.keys():
     ranking['tops'] = tops
     rankingTable.append(ranking)
 
+# Sort the ranking list by percentage score. As all play the same number of boards 
+# we could have used points.
 rankingTable.sort(key = lambda pair: pair['%'], reverse=True)
 
+# Build separe rankings for NS and for EW
 rankingTableNS = []
 rankingTableEW = []
-
 for ranking in rankingTable:
     if ranking['pair'] in ns:
         rankingTableNS.append(ranking)
     else:
         rankingTableEW.append(ranking)
 
+# Compute the position making sure that identical percenatges are handled correctly and then 
+# round the percentages
 for rankingTable in rankingTableNS,rankingTableEW:
     pos = 0
     oldScore = rankingTable[0]["%"]
@@ -113,7 +136,13 @@ for rankingTable in rankingTableNS,rankingTableEW:
 
     for ranking in rankingTable:
         ranking["%"] = round(ranking['%'],2)
-#        print (ranking)     
+
+# Build a list of board results for each pair
+boardsByPair = []
+for pair in pairs:
+    for i in range(len(results)):
+        pass
+
 
 env = Environment(
 loader=FileSystemLoader('.'),
@@ -129,17 +158,21 @@ else:
 eventNum = len(events)
 now = datetime.now()
 fullTitle = str(now.day) + '/' + str(now.month) + '/' + str(now.year) + ' ' + title + ' (' + str(len(pairs)/2) + ' pairs)'
-print (fullTitle)
 
 # Write the events file back
+desc = str(eventNum) + ' ' + fullTitle
 nl = p.exists()
 with open(p,"a") as eventfile:
     if nl: eventfile.write('\n')
-    eventfile.write(str(eventNum) + ' ' + fullTitle)
+    eventfile.write(desc)
+events.append(desc)
 
-z = Path('.')/"zip"
+z = Path('.')/"sd"
 ev = z/str(eventNum)
 ev.mkdir(parents = True, exist_ok = True)
 template = env.get_template('ranking.html')
 with open(ev/"ranking.html",'w') as evfile:
     print(template.render(title=fullTitle, rankingNS=rankingTableNS, rankingEW=rankingTableEW),file=evfile)
+events.reverse()
+with open(z/"index.html",'w') as eventsListFile:
+    print(env.get_template('events.html').render(events = events), file = eventsListFile)

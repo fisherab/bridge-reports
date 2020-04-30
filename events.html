@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<style>
+th {
+  border: 1px solid black;
+  margin: 0;
+  padding: 6px 20px;
+  background-color: gray;
+  color: white;
+}
+
+td {
+  border: 1px solid black;
+  margin: 0;
+  padding: 3px 10px;
+}
+</style>
+    <title>{{title}}</title>
+    <body>
+	<ul>
+        {% for event in events %}
+	{% set words = event.split() %}
+	<li><a href="{{words[0]}}/ranking.html">{{' '.join(words[1:])}}</li>
+        {% endfor %}
+	</ul>
+    </body>
+</html>
