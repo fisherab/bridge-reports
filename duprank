@@ -7,17 +7,46 @@ from os.path import join, exists, getmtime
 import sys
 from pathlib import Path
 from datetime import date, datetime
+import json
+import argparse
 
 # Parse the arguments
-args = (sys.argv[1:])
-if len(args) != 2:
-    sys.exit("Must have two arguments .. the event file and the event title")
-resultsFile, title = args
+now = datetime.now()
+date = str(now.day) + '/' + str(now.month) + '/' + str(now.year)
+parser = argparse.ArgumentParser()
+parser.add_argument("results", help="the input csv file with the results")
+parser.add_argument("title", help="the basic title for the event series - such as the day")
+parser.add_argument("-d", "--date", help="the date of the event (default to today: " + date +")", default=date) 
+args = parser.parse_args()
+resultsFile = args.results
+title = args.title
+date = args.date
+
+# Read in the playerfile and store in a directory indexed by BBO name
+with open("playerfile.csv") as csv_file:
+    csv_reader = csv.reader(csv_file, delimiter=',')
+    persons = {}
+    keynames = []
+    wantedKeys = ["email_address", "username", "realname"]
+    for row in csv_reader:
+        if not keynames:
+            keynames = row
+        else:
+            person = {}
+            for keyname, value in zip(keynames, row):
+                if keyname in wantedKeys:
+                    person[keyname] = value
+            persons[person["username"]] = person
+            words = person["realname"].split()
+            person["givenname"] = ' '.join(words[:-1])
+            person["surname"] = words[-1] 
+            del person["username"]
 
 # Fill the results dictionary with boards from the csv file. It is indexed by boardnum and contains a list of boards
 # Fill the resultsByPair dictionary indexed by pair number with a dictionary of boards indexed by boardnumber
 # Keynames is an array with the keys found in the csv file header
 # Pairs is a dictionary indexed by pair number and holding the pair names and ns is a set of NS pair numbers
+# PairUsernames is a dictionary indexed by pair number and holding the BBO user names as a tuple
 with open(resultsFile) as csv_file:
     csv_reader = csv.reader(csv_file, delimiter=',')
     keynames = [] 
@@ -25,6 +54,7 @@ with open(resultsFile) as csv_file:
     resultsByPair = {}
     pairs = {}
     ns = set()
+    pairUsernames = {}
     wantedKeys = ['board', 'score', 'ns_pair', 'ew_pair', 'north_username', 'south_username', 'east_username', 'west_username']
 
     for row in csv_reader:
@@ -41,10 +71,12 @@ with open(resultsFile) as csv_file:
             results[boardNum].append(board)
             nspair = board['ns_pair']
             ewpair = board['ew_pair']
-            pairs[nspair] = board['north_username'],board['south_username']
-            pairs[ewpair] = board['east_username'],board['west_username']
+            for dirn in ['north','south','east','west']: board[dirn + '_realname'] = persons[board[dirn+'_username']]['realname']
+            pairs[nspair] = board['north_realname'],board['south_realname']
+            pairs[ewpair] = board['east_realname'],board['west_realname']
             ns.add(nspair)
-            for dirn in ['north', 'south', 'east', 'west']: del board[dirn + '_username']
+            pairUsernames[nspair] = board['north_username'],board['south_username']
+            pairUsernames[ewpair] = board['east_username'],board['west_username']
             if nspair not in resultsByPair:
                 resultsByPair[nspair] = {boardNum:board}
             else:
@@ -52,7 +84,12 @@ with open(resultsFile) as csv_file:
             if ewpair not in resultsByPair:
                 resultsByPair[ewpair] = {boardNum:board}
             else:
-                resultsByPair[ewpair][boardNum] = board   
+                resultsByPair[ewpair][boardNum] = board
+
+# Build the shortPairs dictionary which is indexed by pair number and holds one string with given names of the pair separated by ampersand
+shortPairs = {}
+for key, (ne,sw) in pairs.items():
+    shortPairs[key] = ' '.join(ne.split()[:-1]) + ' & ' + ' '.join(sw.split()[:-1]) 
 
 # For each board number sort the boards by score and calculate the points and percentages
 for boardNum in results:
@@ -115,9 +152,9 @@ for ranking in rankingTable:
     else:
         rankingTableEW.append(ranking)
 
-# Compute the position making sure that identical percenatges are handled correctly and then 
+# Compute the position making sure that identical percentages are handled correctly and then 
 # round the percentages
-for rankingTable in rankingTableNS,rankingTableEW:
+for rankingTable,dirn in (rankingTableNS, 'NS'),(rankingTableEW, 'EW'):
     pos = 0
     oldScore = rankingTable[0]["%"]
     for i in range (len(rankingTable)):
@@ -136,19 +173,9 @@ for rankingTable in rankingTableNS,rankingTableEW:
 
     for ranking in rankingTable:
         ranking["%"] = round(ranking['%'],2)
+        ranking["dirn"] = dirn
 
-# Build a list of board results for each pair
-boardsByPair = []
-for pair in pairs:
-    for i in range(len(results)):
-        pass
-
-
-env = Environment(
-loader=FileSystemLoader('.'),
-autoescape=select_autoescape(['html'])
-)
-
+# Read the old events file
 p = Path('.')/"events"
 if p.exists():
     with open("events") as eventfile:
@@ -156,8 +183,7 @@ if p.exists():
 else:
     events = []
 eventNum = len(events)
-now = datetime.now()
-fullTitle = str(now.day) + '/' + str(now.month) + '/' + str(now.year) + ' ' + title + ' (' + str(len(pairs)/2) + ' pairs)'
+fullTitle = date + ' ' + title + ' Casual Video Bridge (' + str(len(pairs)/2) + ' pairs)'
 
 # Write the events file back
 desc = str(eventNum) + ' ' + fullTitle
@@ -167,9 +193,36 @@ with open(p,"a") as eventfile:
     eventfile.write(desc)
 events.append(desc)
 
-z = Path('.')/"sd"
+# Make the directories
+z = Path('.')/"cvb"
 ev = z/str(eventNum)
 ev.mkdir(parents = True, exist_ok = True)
+
+# Prepare info for emails
+emails = []
+for ranking in rankings.values():
+    email1 = {'pos' : ranking['pos'], 'dirn': ranking['dirn'], '%': ranking['%']}
+    email2 = email1.copy()
+    p1,p2 = pairUsernames[ranking['pair']]
+    email1['givenname'] = persons[p1]['givenname']
+    email1['email_address'] = persons[p2]['email_address']
+    email2['givenname'] = persons[p1]['givenname']
+    email2['email_address'] = persons[p2]['email_address']
+    emails.append(email1)
+    emails.append(email2)
+
+# Set up template for jinja2
+env = Environment(
+loader=FileSystemLoader('.'),
+autoescape=select_autoescape(['html'])
+)
+
+with open(ev/"boards.json",'w') as boardfile:
+    json.dump(resultsByPair, boardfile)
+with open(ev/"pairs.json",'w') as pairfile:
+    json.dump(shortPairs, pairfile)
+with open(ev/"emails.json",'w') as emailfile:
+    json.dump(emails, emailfile)
 template = env.get_template('ranking.html')
 with open(ev/"ranking.html",'w') as evfile:
     print(template.render(title=fullTitle, rankingNS=rankingTableNS, rankingEW=rankingTableEW),file=evfile)

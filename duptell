@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+
+import csv
+from jinja2 import Template, FileSystemLoader, TemplateNotFound, Environment
+from pathlib import Path
+import json
+import argparse
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+# Parse the arguments
+with open("events") as eventfile:
+    events = eventfile.readlines()
+eventNum = len(events) - 1
+parser = argparse.ArgumentParser()
+parser.add_argument("-n", "--number", type=int, help="the number of the event to email (default is most recent)", default=eventNum) 
+parser.add_argument("-t", '--template', default='mail.txt', help="the name of the template file (default is mail.txt)")
+args = parser.parse_args()
+eventNum = args.number
+template = args.template
+eventName = ' '.join(events[eventNum].split()[1:])
+
+# Read in the mail.json file
+with open(Path('.')/'cvb'/str(eventNum)/"emails.json") as json_file:
+    emails = json.load(json_file)
+email = emails[0]
+emails = [email]
+email['email_address']="dr.s.m.fisher@gmail.com"
+print(emails)
+
+# Get the mail password
+with open ('.duptellpw') as f:
+    pw = f.readline().strip()
+
+print('!'+pw+'!')
+
+
+# Set up template for jinja2
+env = Environment(
+loader=FileSystemLoader('.'),
+)
+
+template = env.get_template(template)
+for email in emails:
+    body = template.render(email=email, eventName=eventName, eventNum=eventNum)
+    print (body)
+    msg = MIMEMultipart()
+    msg['From']="steve@stevefisher.org.uk"
+    msg["To"] = email["email_address"]
+    msg["Subject"] = "Results from " + eventName
+    msg.attach(MIMEText(body,"plain"))
+    with smtplib.SMTP_SSL('stevefisher.org.uk: 465') as server:
+        server.login(msg['From'], pw)
+        server.sendmail(msg['From'], msg['To'], msg.as_string())

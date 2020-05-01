@@ -1,0 +1,9 @@
+Dear {{email['givenname']}},
+
+This email is more verbose than planned as gmail spam filters were stopping it.
+
+You were at position {{email['pos']}} with {{email['%']}}% in the {{email['dirn']}} section of {{eventName}}.
+
+You will find full results at https://stevefisher.org.uk/cvb/{{eventNum}}.
+
+Steve

@@ -18,13 +18,10 @@ td {
     <title>{{title}}</title>
     <body>
         <table>
-            <tbody>
-            <thead>
-                <tr><th>Pos</th><th>No</th><th>Players</th><th>Match Points</th><th>Tops</th><th>Score %</th></tr>
-                <tr><th colspan=6>NS</th></tr>
-            </thead>
+            <tr><th>Pos</th><th>No</th><th>Players</th><th>Match Points</th><th>Tops</th><th>Score %</th></tr>
+            <tr><th colspan=6>NS</th></tr>
             {% for ranking in rankingNS %}
-                <tr>
+	        <tr>
                     <td>{{ranking['pos']}}</td>
                     <td>{{ranking['pair']}}</td>
                     <td>{{ranking['name'][0]}} & {{ranking['name'][1]}}</td>
@@ -44,6 +41,5 @@ td {
                     <td>{{ranking['%']}}</td>
                 </tr>
             {% endfor %}
-            </tbody>
     </body>
 </html>
