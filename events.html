@@ -20,7 +20,7 @@ td {
 	<ul>
         {% for event in events %}
 	{% set words = event.split() %}
-	<li><a href="{{words[0]}}/ranking.html">{{' '.join(words[1:])}}</li>
+	<li><a href="{{words[0]}}/">{{' '.join(words[1:])}}</li>
         {% endfor %}
 	</ul>
     </body>
