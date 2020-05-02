@@ -23,6 +23,10 @@ resultsFile = args.results
 title = args.title
 date = args.date
 
+# Get score from a N perspective
+def getNP(board):
+    return board['score'] if board['declarer'] in ['North','South'] else -board['score'] 
+
 # Read in the playerfile and store in a directory indexed by BBO name
 with open("playerfile.csv") as csv_file:
     csv_reader = csv.reader(csv_file, delimiter=',')
@@ -98,20 +102,20 @@ for key, (ne,sw) in pairs.items():
 # For each board number sort the boards by score and calculate the points and percentages
 for boardNum in results:
     played = len(results[boardNum])
-    results[boardNum].sort(key=lambda board: board['score'],reverse=True)
+    results[boardNum].sort(key=lambda board: getNP(board), reverse=True)
 
 for key in results.keys():
     resultsForBoard = results[key]
     index = 0
-    best = resultsForBoard[index]['score']
+    best = getNP(resultsForBoard[index])
     for seqnum in range(len(resultsForBoard)):
         board = resultsForBoard[seqnum]
-        if resultsForBoard[seqnum]['score'] < best:
+        if getNP(resultsForBoard[seqnum]) < best:
             for i in range(index, seqnum):
                 resultsForBoard[i]['ns_points'] = 2*played - index-seqnum-1
                 resultsForBoard[i]['ew_points'] = 2*played - 2 - resultsForBoard[i]['ns_points']
             index = seqnum
-            best = resultsForBoard[index]['score']
+            best = getNP(resultsForBoard[index])
 
     for i in range(index, len(resultsForBoard)):
         resultsForBoard[i]['ns_points'] = 2*played - index-len(resultsForBoard)-1
@@ -239,7 +243,7 @@ with open(ev/"meta.json", 'w') as metafile:
     json.dump(meta, metafile)
 template = env.get_template('ranking.html')
 with open(ev/"index.html",'w') as evfile:
-    print(template.render(title=fullTitle, rankingNS=rankingTableNS, rankingEW=rankingTableEW),file=evfile)
+    print(template.render(title=fullTitle, eventNum=eventNum, rankingNS=rankingTableNS, rankingEW=rankingTableEW),file=evfile)
 events.reverse()
 with open(z/"index.html",'w') as eventsListFile:
     print(env.get_template('events.html').render(events = events), file = eventsListFile)

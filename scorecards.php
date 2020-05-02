@@ -113,6 +113,12 @@ $dealer = ["North", "East", "South", "West"][$in16 % 4];
     echo "<tr><td>".$result['ns_pair']."</td><td>".$result['ew_pair']."</td><td>".$result['contract']."</td><td>".$result['declarer']."</td><td>Ld</td><td>".$result['result']."</td><td>".$plus."</td><td>".$minus."</td><td>".$result['ns_points']."</td><td>".$result['ew_points']."</td></tr>";
     } 
     }
+    
+    echo "<h2>Switch boards</h2><p>";
+    for ($b = 1; $b <= $numBoards; ++$b) {
+    	echo '<a href="scorecards.php?board='.$b.'&event='.$eventNum.'&pair='.$pairNum.'">'.$b.'</a> ';
+    }
+    echo "</p>"
  ?>         
            </tbody>
        </table>

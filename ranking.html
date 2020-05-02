@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
-<style>
+    <head>
+        <style>
 th {
   border: 1px solid black;
   margin: 0;
@@ -14,8 +15,9 @@ td {
   margin: 0;
   padding: 3px 10px;
 }
-</style>
-    <title>{{title}}</title>
+        </style>
+        <title>{{title}}</title>
+    </head>
     <body>
         <table>
             <h1>{{title}}</h1>
@@ -25,7 +27,7 @@ td {
 	        <tr>
                     <td>{{ranking['pos']}}</td>
                     <td>{{ranking['pair']}}</td>
-                    <td>{{ranking['name'][0]}} & {{ranking['name'][1]}}</td>
+                    <td><a href="../scorecards.php?event={{eventNum}}&pair={{ranking['pair']}}&board=1">{{ranking['name'][0]}} & {{ranking['name'][1]}}</a></td>
                     <td>{{ranking['points']}}</td>
                     <td>{{ranking['tops']}}</td>
                     <td>{{ranking['%']}}</td>
@@ -36,7 +38,7 @@ td {
                 <tr>
                     <td>{{ranking['pos']}}</td>
                     <td>{{ranking['pair']}}</td>
-                    <td>{{ranking['name'][0]}} & {{ranking['name'][1]}}</td>
+                    <td><a href="../scorecards.php?event={{eventNum}}&pair={{ranking['pair']}}&board=1">{{ranking['name'][0]}} & {{ranking['name'][1]}}</a></td>
                     <td>{{ranking['points']}}</td>
                     <td>{{ranking['tops']}}</td>
                     <td>{{ranking['%']}}</td>

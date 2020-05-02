@@ -43,13 +43,13 @@ loader=FileSystemLoader('.'),
 
 template = env.get_template(template)
 for email in emails:
-    body = template.render(email=email, eventName=eventName, eventNum=eventNum)
-    print (body)
-    msg = MIMEMultipart()
-    msg['From']="steve@stevefisher.org.uk"
-    msg["To"] = email["email_address"]
-    msg["Subject"] = "Results from " + eventName
-    msg.attach(MIMEText(body,"plain"))
-    with smtplib.SMTP_SSL('stevefisher.org.uk: 465') as server:
-        server.login(msg['From'], pw)
-        server.sendmail(msg['From'], msg['To'], msg.as_string())
+    if '@' in email:
+        body = template.render(email=email, eventName=eventName, eventNum=eventNum)
+        msg = MIMEMultipart()
+        msg['From']="steve@stevefisher.org.uk"
+        msg["To"] = email["email_address"]
+        msg["Subject"] = "Results from " + eventName
+        msg.attach(MIMEText(body,"plain"))
+        with smtplib.SMTP_SSL('stevefisher.org.uk: 465') as server:
+            server.login(msg['From'], pw)
+            server.sendmail(msg['From'], msg['To'], msg.as_string())
